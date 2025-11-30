@@ -251,7 +251,6 @@ function renderReportTable() {
     let htmlContent = ''; 
 
     // --- 1. RENDER GROUPS (TOTAL followed by DETAILS) ---
-    // The order of iteration here determines the order in the report (BAILICHE MAZOUZ then VIEUX KSAR)
     for (const groupName in GROUP_MAPPING) {
         const locationNames = GROUP_MAPPING[groupName];
         const groupTotals = calculateGroupTotals(locationNames);
@@ -276,6 +275,52 @@ function renderReportTable() {
             </tr>
         `;
         
+        // 1b. Render the individual locations inside the group (The details)
+        locationNames.forEach(locName => {
+            htmlContent += renderLocationRow(locName, true); 
+        });
+    }
+
+    // --- 2. RENDER REMAINING LOCATIONS (if any, not belonging to a custom group) ---
+    state.locations.forEach(loc => {
+        // Only render if the location name is NOT in any of the custom groups
+        if (renderedLocations.includes(loc.name)) return;
+
+        const data = state.inventory.find(i => i.location_id === loc.id) || {};
+        const N = data.total_N || 0; const O = data.total_O || 0;
+        const Q = data.total_Q || 0; const R = data.total_R || 0;
+        
+        // Add individual totals to the grand totals
+        tN += N; tO += O; tQ += Q; tR += R;
+
+        htmlContent += renderLocationRow(loc.name, false);
+    });
+
+    // --- ADDED DEBUG LOGGING ---
+    console.log("--- FINAL REPORT HTML CONTENT START ---");
+    console.log(htmlContent);
+    console.log("--- FINAL REPORT HTML CONTENT END ---");
+    // --- END DEBUG LOGGING ---
+
+    tbody.innerHTML = htmlContent;
+
+    // --- 3. RENDER GRAND TOTALS ---
+    const tUsable = tO - tQ - tR;
+    const tDenom = (tQ + tR) * 50;
+    let tLoss = "0.00%";
+    if (tDenom > 0) tLoss = (((tDenom - tN) / tDenom) * 100).toFixed(2) + '%';
+
+    tfooter.innerHTML = `
+        <tr>
+            <td class="px-6 py-4 font-black text-white bg-slate-700">GRAND TOTAL GLOBAL</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tN}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tO}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tQ}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tR}</td>
+            <td class="px-6 py-4 text-center font-black text-blue-800 bg-blue-300">${tUsable}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-red-600">${tLoss}</td>
+        </tr>
+    `;
         // 1b. Render the individual locations inside the group (The details)
         locationNames.forEach(locName => {
             htmlContent += renderLocationRow(locName, true); 
