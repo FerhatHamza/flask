@@ -5,7 +5,7 @@
 // ==========================================
 //  *** REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL ***
 // ==========================================
-const API_BASE = "https://your-worker-name.your-subdomain.workers.dev";
+const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
 // ==========================================
 
 // --- LOCATION GROUPING MAP (Corrected Order for Display) ---
