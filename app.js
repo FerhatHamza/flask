@@ -1,5 +1,5 @@
 /**
- * FRONTEND LOGIC - APP.JS (Group Rendering Corrected)
+ * FRONTEND LOGIC - APP.JS (Group Rendering Final Correction)
  */
 
 // ==========================================
@@ -10,15 +10,15 @@ const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
 
 // --- LOCATION GROUPING MAP ---
 const GROUP_MAPPING = {
-    'VIEUX KSAR': [
-        'Polyclinique vieux k\'sar', 
-        'equip mobile 2', 
-        'center de sante chikh ameur'
-    ],
     'BAILICHE MAZOUZ': [
         'Polyclinique bailiche mazouz', 
         'center de sante elmoudjahidine', 
         'equip mobile 1'
+    ],
+    'VIEUX KSAR': [
+        'Polyclinique vieux k\'sar', 
+        'equip mobile 2', 
+        'center de sante chikh ameur'
     ]
 };
 
@@ -30,7 +30,7 @@ let state = {
     inventory: []
 };
 
-// --- UTILITY FUNCTIONS (Login, Logout, Init, Refresh remain the same) ---
+// --- UTILITY FUNCTIONS ---
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -98,8 +98,6 @@ async function refreshData() {
     state.inventory = data.inventory || [];
     document.getElementById('nav-epsp-name').innerText = state.demographics.epsp_name || 'EPSP Gestion';
 }
-
-// --- USER & ADMIN LOGIC (No change needed) ---
 
 function setupUserView() {
     const locId = state.user.location_id;
@@ -180,17 +178,15 @@ document.getElementById('admin-form').addEventListener('submit', async (e) => {
 });
 
 
-// --- REPORT LOGIC (Includes Corrected Group Totals) ---
+// --- CORE REPORTING FUNCTIONS ---
 
 function calculateGroupTotals(locationNames) {
     let totals = { N: 0, O: 0, Q: 0, R: 0 };
     
-    // 1. Find the location IDs corresponding to the names
     const locationIds = state.locations
         .filter(loc => locationNames.includes(loc.name))
         .map(loc => loc.id);
 
-    // 2. Sum the inventory data for those IDs
     state.inventory.forEach(inv => {
         if (locationIds.includes(inv.location_id)) {
             totals.N += inv.total_N || 0;
@@ -213,7 +209,12 @@ function calculateKPIs(totals) {
     return { usable, loss };
 }
 
-function renderLocationRow(locName, isSubRow = false) {
+/**
+ * Renders an individual location row.
+ * @param {string} locName 
+ * @param {boolean} isGroupMember - True if part of a group, changes padding/background.
+ */
+function renderLocationRow(locName, isGroupMember) {
     const loc = state.locations.find(l => l.name === locName);
     if (!loc) return '';
     
@@ -224,8 +225,8 @@ function renderLocationRow(locName, isSubRow = false) {
     const { usable, loss } = calculateKPIs({N, O, Q, R});
 
     return `
-        <tr class="${isSubRow ? 'bg-gray-50 hover:bg-gray-100 border-b' : 'hover:bg-gray-50 border-b'}">
-            <td class="px-6 py-3 font-medium ${isSubRow ? 'pl-10 text-gray-700' : ''}">${loc.name} <span class="text-xs text-gray-400 block">${loc.type}</span></td>
+        <tr class="hover:bg-gray-100 border-b ${isGroupMember ? 'bg-gray-50' : ''}">
+            <td class="px-6 py-3 font-medium ${isGroupMember ? 'pl-10 text-gray-700' : ''}">${loc.name} <span class="text-xs text-gray-400 block">${loc.type}</span></td>
             <td class="px-6 py-3 text-center font-bold">${N}</td>
             <td class="px-6 py-3 text-center">${O}</td>
             <td class="px-6 py-3 text-center text-red-500">${Q}</td>
@@ -244,9 +245,9 @@ function renderReportTable() {
     
     let tN=0, tO=0, tQ=0, tR=0;
     const renderedLocations = []; 
-    let htmlContent = ''; // Use a single variable to build the HTML
+    let htmlContent = ''; 
 
-    // --- 1. RENDER GROUP TOTALS AND THEIR MEMBERS ---
+    // --- 1. RENDER GROUPS (TOTAL followed by DETAILS) ---
     for (const groupName in GROUP_MAPPING) {
         const locationNames = GROUP_MAPPING[groupName];
         const groupTotals = calculateGroupTotals(locationNames);
@@ -255,29 +256,29 @@ function renderReportTable() {
         // Add group totals to the grand totals
         tN += groupTotals.N; tO += groupTotals.O; tQ += groupTotals.Q; tR += groupTotals.R;
         
-        // Add location names to the rendered list
+        // Mark locations as rendered
         renderedLocations.push(...locationNames);
 
-        // 1a. Render the Group Total row
+        // 1a. Render the Group Total row (The title/header)
         htmlContent += `
-            <tr class="bg-blue-200 hover:bg-blue-300 font-black border-t-2 border-b-2 border-blue-400">
+            <tr class="bg-blue-300 hover:bg-blue-400 font-black border-t-4 border-b-2 border-blue-500">
                 <td class="px-6 py-3 text-blue-900">${groupName} (TOTAL)</td>
                 <td class="px-6 py-3 text-center">${groupTotals.N}</td>
                 <td class="px-6 py-3 text-center">${groupTotals.O}</td>
                 <td class="px-6 py-3 text-center text-red-700">${groupTotals.Q}</td>
                 <td class="px-6 py-3 text-center text-red-700">${groupTotals.R}</td>
-                <td class="px-6 py-3 text-center bg-blue-300">${usable}</td>
-                <td class="px-6 py-3 text-center bg-yellow-200">${loss}</td>
+                <td class="px-6 py-3 text-center bg-blue-400">${usable}</td>
+                <td class="px-6 py-3 text-center bg-yellow-300">${loss}</td>
             </tr>
         `;
         
-        // 1b. Render the individual locations inside the group
+        // 1b. Render the individual locations inside the group (The details)
         locationNames.forEach(locName => {
-            htmlContent += renderLocationRow(locName, true); // true sets isSubRow formatting
+            htmlContent += renderLocationRow(locName, true); 
         });
     }
 
-    // --- 2. RENDER INDIVIDUAL LOCATIONS NOT IN A CUSTOM GROUP ---
+    // --- 2. RENDER REMAINING LOCATIONS (if any) ---
     state.locations.forEach(loc => {
         // Only render if the location name is NOT in any of the custom groups
         if (renderedLocations.includes(loc.name)) return;
@@ -322,7 +323,6 @@ function renderReportTable() {
     const taux12_59m = ((tN / target12_59m) * 100).toFixed(2);
     
     const overallTarget = parseInt(target2_11m) + parseInt(target12_59m);
-    // const overallTaux = ((tN / overallTarget) * 100).toFixed(2); // Removed this since we have the individual targets
 
     document.getElementById('kpi-target').innerText = overallTarget.toLocaleString();
     document.getElementById('kpi-n').innerText = tN.toLocaleString();
