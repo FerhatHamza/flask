@@ -24,11 +24,11 @@
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase">Utilisateur</label>
-                    <input type="text" id="username" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="" required>
+                    <input type="text" id="username" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="ex: user1, admin" required>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase">Mot de passe</label>
-                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="" required>
+                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="••••••" required>
                 </div>
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition duration-200">Se Connecter</button>
             </form>
@@ -87,6 +87,7 @@
             </section>
 
             <section id="section-report" class="hidden space-y-6">
+                
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-l-4 border-l-purple-500">
                         <p class="text-xs font-bold text-gray-500 uppercase">Cible Totale (2-59m)</p>
@@ -109,9 +110,24 @@
                         <p class="text-2xl font-bold text-red-600 mt-1" id="kpi-loss">0%</p>
                     </div>
                 </div>
+
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left"><thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold"><tr><th class="px-6 py-3">Structure</th><th class="px-6 py-3 text-center">N</th><th class="px-6 py-3 text-center">O</th><th class="px-6 py-3 text-center text-red-600">Q</th><th class="px-6 py-3 text-center text-red-600">R</th><th class="px-6 py-3 text-center bg-blue-50">Utilisables</th><th class="px-6 py-3 text-center bg-yellow-50">Perte</th></tr></thead><tbody id="report-body" class="divide-y divide-gray-100"></tbody><tfoot class="bg-gray-100 font-bold" id="report-footer"></tfoot></table>
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold">
+                                <tr>
+                                    <th class="px-6 py-3">Structure / Groupe</th>
+                                    <th class="px-6 py-3 text-center">N (Vaccinés)</th>
+                                    <th class="px-6 py-3 text-center">O (Stock Début)</th>
+                                    <th class="px-6 py-3 text-center text-red-600">Q (Inutilisables)</th>
+                                    <th class="px-6 py-3 text-center text-red-600">R (Perdus)</th>
+                                    <th class="px-6 py-3 text-center bg-blue-50">Utilisables</th>
+                                    <th class="px-6 py-3 text-center bg-yellow-50">Taux Perte</th>
+                                </tr>
+                            </thead>
+                            <tbody id="report-body" class="divide-y divide-gray-100"></tbody>
+                            <tfoot class="bg-gray-100 font-bold" id="report-footer"></tfoot>
+                        </table>
                     </div>
                 </div>
             </section>
