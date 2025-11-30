@@ -12,13 +12,13 @@ const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
 const GROUP_MAPPING = {
     'BAILICHE MAZOUZ': [
         'Polyclinique bailiche mazouz', 
-        'center de sante elmoudjahidine', 
-        'equip mobile 1'
+        'Center de sante elmoudjahidine', 
+        'Equip mobile 1'
     ],
     'VIEUX KSAR': [
-        'Polyclinique vieux k\'sar', 
-        'equip mobile 2', 
-        'center de sante chikh ameur'
+        'Polyclinique vieux ksar', 
+        'Equip mobile 2', 
+        'Center de sante chikh ameur'
     ]
 };
 
