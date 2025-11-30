@@ -1,5 +1,5 @@
 /**
- * FRONTEND LOGIC - APP.JS (Updated)
+ * FRONTEND LOGIC - APP.JS (Group Mapping Corrected)
  */
 
 // ==========================================
@@ -8,7 +8,7 @@
 const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
 // ==========================================
 
-// --- LOCATION GROUPING MAP (For Global Totaux) ---
+// --- LOCATION GROUPING MAP (Corrected for Global Totaux) ---
 // Note: These names must exactly match the 'name' field in your locations table.
 const GROUP_MAPPING = {
     'VIEUX KSAR': [
@@ -18,8 +18,8 @@ const GROUP_MAPPING = {
     ],
     'BAILICHE MAZOUZ': [
         'Polyclinique bailiche mazouz', 
-        'equip mobile 1', 
-        'center de sante elmoudjahidine'
+        'center de sante elmoudjahidine', 
+        'equip mobile 1'
     ]
 };
 
@@ -31,7 +31,8 @@ let state = {
     inventory: []
 };
 
-// --- AUTHENTICATION & INITIALIZATION ---
+// --- UTILITY FUNCTIONS (Login, Logout, Init, Refresh remain the same) ---
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const u = document.getElementById('username').value;
@@ -75,7 +76,6 @@ async function initApp() {
     
     await refreshData();
 
-    // Show sections based on role
     const role = state.user.role;
     if (role === 'admin') {
         document.getElementById('section-admin').classList.remove('hidden');
@@ -100,14 +100,14 @@ async function refreshData() {
     document.getElementById('nav-epsp-name').innerText = state.demographics.epsp_name || 'EPSP Gestion';
 }
 
-// --- USER VIEW LOGIC ---
+// --- USER & ADMIN LOGIC (No change needed) ---
+
 function setupUserView() {
     const locId = state.user.location_id;
     const loc = state.locations.find(l => l.id === locId);
     document.getElementById('user-location-label').innerText = loc ? loc.name : 'Lieu Inconnu';
     document.getElementById('inv-date').valueAsDate = new Date();
 
-    // Live Calculation Listeners
     ['inv-O', 'inv-Q', 'inv-R'].forEach(id => {
         document.getElementById(id).addEventListener('input', () => {
             const O = parseInt(document.getElementById('inv-O').value) || 0;
@@ -151,7 +151,6 @@ document.getElementById('inventory-form').addEventListener('submit', async (e) =
     }
 });
 
-// --- ADMIN VIEW LOGIC ---
 function populateAdminConfig() {
     const d = state.demographics;
     if(!d) return;
@@ -182,7 +181,7 @@ document.getElementById('admin-form').addEventListener('submit', async (e) => {
 });
 
 
-// --- REPORT LOGIC (Includes Group Totals) ---
+// --- REPORT LOGIC (Includes Corrected Group Totals) ---
 
 /**
  * Calculates sums for a specific group of locations.
@@ -230,6 +229,9 @@ function renderReportTable() {
     
     let tN=0, tO=0, tQ=0, tR=0;
     
+    // Track which locations have been rendered (either as part of a group or individually)
+    const renderedLocations = []; 
+
     // --- 1. RENDER GROUP TOTALS ---
     for (const groupName in GROUP_MAPPING) {
         const locationNames = GROUP_MAPPING[groupName];
@@ -238,6 +240,9 @@ function renderReportTable() {
 
         // Add group totals to the grand totals
         tN += groupTotals.N; tO += groupTotals.O; tQ += groupTotals.Q; tR += groupTotals.R;
+        
+        // Add location names to the rendered list
+        renderedLocations.push(...locationNames);
 
         // Render the group row
         const groupRow = document.createElement('tr');
@@ -254,18 +259,17 @@ function renderReportTable() {
         tbody.appendChild(groupRow);
     }
     
-    // --- 2. RENDER INDIVIDUAL LOCATIONS (Non-grouped locations are also included) ---
+    // --- 2. RENDER INDIVIDUAL LOCATIONS (Locations not in a custom group) ---
     state.locations.forEach(loc => {
-        // Find if this location is part of a mapped group. If so, skip rendering it individually.
-        const isGrouped = Object.values(GROUP_MAPPING).flat().includes(loc.name);
-        if (isGrouped) return;
+        // Only render if the location name is NOT in any of the custom groups
+        if (renderedLocations.includes(loc.name)) return;
 
+        // Find individual location inventory data
         const data = state.inventory.find(i => i.location_id === loc.id) || {};
         const N = data.total_N || 0; const O = data.total_O || 0;
         const Q = data.total_Q || 0; const R = data.total_R || 0;
         
-        // Only add non-grouped totals if you want a true GRAND TOTAL 
-        // that includes locations not in the two specified groups.
+        // Add individual totals to the grand totals (if not already counted in groups, which they aren't here)
         tN += N; tO += O; tQ += Q; tR += R;
 
         const { usable, loss } = calculateKPIs({N, O, Q, R});
@@ -302,17 +306,13 @@ function renderReportTable() {
 
     // --- 4. UPDATE KPI CARDS (New Coverage Rates) ---
     
-    // Note: Since 'N' is the total number vaccinated (not split by age group),
-    // we use the total N against each specific age target for the Taux Cible.
     const target2_11m = state.demographics.cible_2_11m || 1;
     const target12_59m = state.demographics.cible_12_59m || 1; 
 
-    // Calculate Taux Cible (Coverage Rate)
     const taux2_11m = ((tN / target2_11m) * 100).toFixed(2);
     const taux12_59m = ((tN / target12_59m) * 100).toFixed(2);
     
-    // Calculate Overall Coverage
-    const overallTarget = target2_11m + target12_59m;
+    const overallTarget = parseInt(target2_11m) + parseInt(target12_59m);
     const overallTaux = ((tN / overallTarget) * 100).toFixed(2);
 
 
@@ -320,6 +320,5 @@ function renderReportTable() {
     document.getElementById('kpi-n').innerText = tN.toLocaleString();
     document.getElementById('kpi-taux-2-11m').innerText = taux2_11m + '%';
     document.getElementById('kpi-taux-12-59m').innerText = taux12_59m + '%';
-    document.getElementById('kpi-overall-coverage').innerText = overallTaux + '%'; // New overall KPI
     document.getElementById('kpi-loss').innerText = tLoss;
 }
