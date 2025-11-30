@@ -1,15 +1,14 @@
 /**
- * FRONTEND LOGIC - APP.JS (Group Rendering Final Correction)
+ * FRONTEND LOGIC - APP.JS (VERIFIED GROUP RENDERING)
  */
 
 // ==========================================
 //  *** REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL ***
 // ==========================================
-const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
+const API_BASE = "https://your-worker-name.your-subdomain.workers.dev";
 // ==========================================
 
-// --- LOCATION GROUPING MAP ---
-// These names must exactly match the 'name' field in your locations table.
+// --- LOCATION GROUPING MAP (Corrected Order for Display) ---
 const GROUP_MAPPING = {
     'BAILICHE MAZOUZ': [
         'Polyclinique bailiche mazouz', 
@@ -31,7 +30,7 @@ let state = {
     inventory: []
 };
 
-// --- AUTHENTICATION & INITIALIZATION ---
+// --- AUTHENTICATION & INITIALIZATION (No changes) ---
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -186,10 +185,12 @@ document.getElementById('admin-form').addEventListener('submit', async (e) => {
 function calculateGroupTotals(locationNames) {
     let totals = { N: 0, O: 0, Q: 0, R: 0 };
     
+    // Find IDs corresponding to names
     const locationIds = state.locations
         .filter(loc => locationNames.includes(loc.name))
         .map(loc => loc.id);
 
+    // Sum inventory data for those IDs
     state.inventory.forEach(inv => {
         if (locationIds.includes(inv.location_id)) {
             totals.N += inv.total_N || 0;
@@ -225,6 +226,7 @@ function renderLocationRow(locName, isGroupMember) {
     
     const { usable, loss } = calculateKPIs({N, O, Q, R});
 
+    // Added border-b-2 to separate detail groups better
     return `
         <tr class="hover:bg-gray-100 border-b ${isGroupMember ? 'bg-gray-50' : ''}">
             <td class="px-6 py-3 font-medium ${isGroupMember ? 'pl-10 text-gray-700' : ''}">${loc.name} <span class="text-xs text-gray-400 block">${loc.type}</span></td>
@@ -249,6 +251,7 @@ function renderReportTable() {
     let htmlContent = ''; 
 
     // --- 1. RENDER GROUPS (TOTAL followed by DETAILS) ---
+    // The order of iteration here determines the order in the report (BAILICHE MAZOUZ then VIEUX KSAR)
     for (const groupName in GROUP_MAPPING) {
         const locationNames = GROUP_MAPPING[groupName];
         const groupTotals = calculateGroupTotals(locationNames);
@@ -279,12 +282,11 @@ function renderReportTable() {
         });
     }
 
-    // --- 2. RENDER REMAINING LOCATIONS (if any, and add their totals to grand total) ---
+    // --- 2. RENDER REMAINING LOCATIONS (if any, not belonging to a custom group) ---
     state.locations.forEach(loc => {
         // Only render if the location name is NOT in any of the custom groups
         if (renderedLocations.includes(loc.name)) return;
 
-        // Find individual location inventory data
         const data = state.inventory.find(i => i.location_id === loc.id) || {};
         const N = data.total_N || 0; const O = data.total_O || 0;
         const Q = data.total_Q || 0; const R = data.total_R || 0;
