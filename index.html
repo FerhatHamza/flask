@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Flacons - EPSP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .hidden { display: none !important; }
+        .loader { border-top-color: #3498db; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="login-view" class="min-h-screen flex items-center justify-center bg-gray-100">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm border border-gray-200">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-syringe text-4xl text-blue-600"></i>
+                <h1 class="text-2xl font-bold text-gray-800 mt-2">Gestion Flacons</h1>
+                <p class="text-sm text-gray-500">Connexion sécurisée</p>
+            </div>
+            
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase">Utilisateur</label>
+                    <input type="text" id="username" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="ex: user1, admin" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase">Mot de passe</label>
+                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="••••••" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition duration-200">Se Connecter</button>
+            </form>
+            <p id="login-error" class="text-red-500 text-sm mt-3 text-center hidden"><i class="fa-solid fa-triangle-exclamation"></i> Identifiants incorrects</p>
+        </div>
+    </div>
+
+    <div id="dashboard-view" class="hidden min-h-screen flex flex-col">
+        <nav class="bg-slate-800 text-white shadow-lg sticky top-0 z-50">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-500 p-2 rounded-lg"><i class="fa-solid fa-hospital-user text-white"></i></div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight" id="nav-epsp-name">Chargement...</h1>
+                        <p class="text-xs text-slate-400" id="nav-user-info">...</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="bg-red-500 hover:bg-red-600 text-white text-sm px-4 py-2 rounded transition">Déconnexion</button>
+            </div>
+        </nav>
+
+        <main class="container mx-auto px-4 py-8 flex-grow space-y-8">
+            <section id="section-admin" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200"><h2 class="font-bold text-gray-700">Configuration Démographique</h2></div>
+                <div class="p-6">
+                    <form id="admin-form" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="md:col-span-3"><label class="block text-sm font-semibold">Nom de l'EPSP</label><input type="text" id="cfg-epsp" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label class="block text-sm font-semibold">Nbr Polycliniques</label><input type="number" id="cfg-nbr" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label class="block text-sm font-semibold">Population Totale</label><input type="number" id="cfg-pop" class="w-full mt-1 p-2 border rounded"></div>
+                        <div></div>
+                        <div><label class="block text-sm font-semibold">Cible 2-11 mois</label><input type="number" id="cfg-c2" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label class="block text-sm font-semibold">Cible 12-59 mois</label><input type="number" id="cfg-c12" class="w-full mt-1 p-2 border rounded"></div>
+                        <div class="flex items-end"><button type="submit" class="w-full bg-slate-700 hover:bg-slate-800 text-white py-2 rounded">Enregistrer</button></div>
+                    </form>
+                </div>
+            </section>
+
+            <section id="section-user" class="hidden max-w-2xl mx-auto bg-white rounded-xl shadow-md border border-gray-200">
+                <div class="bg-blue-600 px-6 py-4 rounded-t-xl border-b border-blue-700"><h2 class="font-bold text-white text-lg">Saisie Journalière</h2><p class="text-blue-100 text-sm mt-1" id="user-location-label">...</p></div>
+                <form id="inventory-form" class="p-6 space-y-6">
+                    <div><label class="block text-sm font-bold text-gray-700 mb-1">Date</label><input type="date" id="inv-date" class="w-full p-2 border border-gray-300 rounded" required></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-100"><label class="block text-sm font-bold text-blue-800">N (Vaccinés)</label><input type="number" id="inv-N" class="w-full mt-2 p-2 border border-blue-200 rounded text-lg font-mono" placeholder="0" required></div>
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-100"><label class="block text-sm font-bold text-green-800">O (Stock Début)</label><input type="number" id="inv-O" class="w-full mt-2 p-2 border border-green-200 rounded text-lg font-mono" placeholder="0" required></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="bg-red-50 p-4 rounded-lg border border-red-100"><label class="block text-sm font-bold text-red-800">Q (Inutilisables)</label><input type="number" id="inv-Q" class="w-full p-2 border border-red-200 rounded text-lg font-mono" placeholder="0" required></div>
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-100"><label class="block text-sm font-bold text-orange-800">R (Perdus)</label><input type="number" id="inv-R" class="w-full p-2 border border-orange-200 rounded text-lg font-mono" placeholder="0" required></div>
+                    </div>
+                    <div class="bg-gray-800 text-white p-4 rounded-lg shadow-inner">
+                        <div class="flex justify-between border-b border-gray-600 pb-2 mb-2"><span class="text-sm">Utilisables (O-Q-R)</span><span id="disp-usable" class="text-xl font-bold font-mono text-green-400">0</span></div>
+                        <div class="flex justify-between"><span class="text-sm">Inv. Physique (Q+Util)</span><span id="disp-physical" class="text-xl font-bold font-mono text-yellow-400">0</span></div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow">Envoyer</button>
+                </form>
+            </section>
+
+            <section id="section-report" class="hidden space-y-6">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500"><p class="text-xs font-bold text-gray-500">Cible (2-59m)</p><p class="text-2xl font-bold" id="kpi-target">0</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500"><p class="text-xs font-bold text-gray-500">Total Vaccinés</p><p class="text-2xl font-bold" id="kpi-n">0</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500"><p class="text-xs font-bold text-gray-500">Couverture</p><p class="text-2xl font-bold text-green-600" id="kpi-coverage">0%</p></div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500"><p class="text-xs font-bold text-gray-500">Taux Perte</p><p class="text-2xl font-bold text-red-600" id="kpi-loss">0%</p></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left"><thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold"><tr><th class="px-6 py-3">Structure</th><th class="px-6 py-3 text-center">N</th><th class="px-6 py-3 text-center">O</th><th class="px-6 py-3 text-center text-red-600">Q</th><th class="px-6 py-3 text-center text-red-600">R</th><th class="px-6 py-3 text-center bg-blue-50">Utilisables</th><th class="px-6 py-3 text-center bg-yellow-50">Perte</th></tr></thead><tbody id="report-body" class="divide-y divide-gray-100"></tbody><tfoot class="bg-gray-100 font-bold" id="report-footer"></tfoot></table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // ==========================================
+        //  REPLACE THIS WITH YOUR WORKER URL !!!
+        // ==========================================
+        const API_BASE = "https://your-worker-name.your-subdomain.workers.dev";
+        // ==========================================
+
+        let state = { user: null, demographics: {}, locations: [], inventory: [] };
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            const btn = e.target.querySelector('button');
+            const err = document.getElementById('login-error');
+
+            btn.innerText = 'Connexion...'; err.classList.add('hidden');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: u, password: p })
+                });
+
+                if (res.ok) {
+                    state.user = await res.json();
+                    initApp();
+                } else {
+                    err.classList.remove('hidden');
+                    btn.innerText = 'Se Connecter';
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Erreur de connexion au serveur Cloudflare.");
+                btn.innerText = 'Se Connecter';
+            }
+        });
+
+        function logout() { window.location.reload(); }
+
+        async function initApp() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('nav-user-info').innerText = `${state.user.role.toUpperCase()} | ${state.user.username}`;
+            
+            await refreshData();
+
+            if (state.user.role === 'admin') {
+                document.getElementById('section-admin').classList.remove('hidden');
+                document.getElementById('section-report').classList.remove('hidden');
+                populateAdminConfig();
+            } else if (state.user.role === 'consultant') {
+                document.getElementById('section-report').classList.remove('hidden');
+            } else if (state.user.role === 'user') {
+                document.getElementById('section-user').classList.remove('hidden');
+                setupUserView();
+            }
+            if (state.user.role !== 'user') renderReportTable();
+        }
+
+        async function refreshData() {
+            const res = await fetch(`${API_BASE}/api/data`);
+            const data = await res.json();
+            state.demographics = data.demo || {};
+            state.locations = data.locations || [];
+            state.inventory = data.inventory || [];
+            document.getElementById('nav-epsp-name').innerText = state.demographics.epsp_name || 'EPSP Gestion';
+        }
+
+        function setupUserView() {
+            const locId = state.user.location_id;
+            const loc = state.locations.find(l => l.id === locId);
+            document.getElementById('user-location-label').innerText = loc ? loc.name : 'Lieu Inconnu';
+            document.getElementById('inv-date').valueAsDate = new Date();
+
+            ['inv-O', 'inv-Q', 'inv-R'].forEach(id => {
+                document.getElementById(id).addEventListener('input', () => {
+                    const O = parseInt(document.getElementById('inv-O').value) || 0;
+                    const Q = parseInt(document.getElementById('inv-Q').value) || 0;
+                    const R = parseInt(document.getElementById('inv-R').value) || 0;
+                    const usable = O - Q - R;
+                    const physical = usable + Q;
+                    const disp = document.getElementById('disp-usable');
+                    disp.innerText = usable;
+                    disp.className = usable < 0 ? "text-xl font-bold font-mono text-red-500" : "text-xl font-bold font-mono text-green-400";
+                    document.getElementById('disp-physical').innerText = physical;
+                });
+            });
+        }
+
+        document.getElementById('inventory-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!confirm("Confirmer les chiffres ?")) return;
+
+            const payload = {
+                location_id: state.user.location_id,
+                date: document.getElementById('inv-date').value,
+                N: parseInt(document.getElementById('inv-N').value),
+                O: parseInt(document.getElementById('inv-O').value),
+                Q: parseInt(document.getElementById('inv-Q').value),
+                R: parseInt(document.getElementById('inv-R').value)
+            };
+
+            await fetch(`${API_BASE}/api/inventory`, { method: 'POST', body: JSON.stringify(payload) });
+            alert("Données enregistrées !");
+            document.getElementById('inventory-form').reset();
+            setupUserView();
+        });
+
+        function populateAdminConfig() {
+            const d = state.demographics;
+            if(!d) return;
+            document.getElementById('cfg-epsp').value = d.epsp_name || '';
+            document.getElementById('cfg-nbr').value = d.nbr_polyclinique || '';
+            document.getElementById('cfg-pop').value = d.pop_total || '';
+            document.getElementById('cfg-c2').value = d.cible_2_11m || '';
+            document.getElementById('cfg-c12').value = d.cible_12_59m || '';
+        }
+
+        document.getElementById('admin-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                epsp_name: document.getElementById('cfg-epsp').value,
+                nbr_polyclinique: document.getElementById('cfg-nbr').value,
+                pop_total: document.getElementById('cfg-pop').value,
+                cible_2_11m: document.getElementById('cfg-c2').value,
+                cible_12_59m: document.getElementById('cfg-c12').value,
+            };
+            await fetch(`${API_BASE}/api/demographics`, { method: 'POST', body: JSON.stringify(payload) });
+            alert("Configuration sauvegardée.");
+            await refreshData();
+            renderReportTable();
+        });
+
+        function renderReportTable() {
+            const tbody = document.getElementById('report-body');
+            const tfooter = document.getElementById('report-footer');
+            tbody.innerHTML = '';
+            let tN=0, tO=0, tQ=0, tR=0;
+
+            state.locations.forEach(loc => {
+                const data = state.inventory.find(i => i.location_id === loc.id) || {};
+                const N = data.total_N || 0; const O = data.total_O || 0;
+                const Q = data.total_Q || 0; const R = data.total_R || 0;
+                tN += N; tO += O; tQ += Q; tR += R;
+
+                const usable = O - Q - R;
+                const denom = (Q + R) * 50;
+                let loss = "-";
+                if (denom > 0) loss = (((denom - N) / denom) * 100).toFixed(2) + '%';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 border-b">
+                        <td class="px-6 py-4 font-medium">${loc.name} <span class="text-xs text-gray-400 block">${loc.type}</span></td>
+                        <td class="px-6 py-4 text-center font-bold">${N}</td>
+                        <td class="px-6 py-4 text-center">${O}</td>
+                        <td class="px-6 py-4 text-center text-red-500">${Q}</td>
+                        <td class="px-6 py-4 text-center text-red-500">${R}</td>
+                        <td class="px-6 py-4 text-center font-bold bg-blue-50">${usable}</td>
+                        <td class="px-6 py-4 text-center font-bold bg-yellow-50">${loss}</td>
+                    </tr>`;
+            });
+
+            const tUsable = tO - tQ - tR;
+            const tDenom = (tQ + tR) * 50;
+            let tLoss = "0.00%";
+            if (tDenom > 0) tLoss = (((tDenom - tN) / tDenom) * 100).toFixed(2) + '%';
+
+            tfooter.innerHTML = `
+                <td class="px-6 py-4 font-black">TOTAL GLOBAL</td>
+                <td class="px-6 py-4 text-center font-black">${tN}</td>
+                <td class="px-6 py-4 text-center font-black">${tO}</td>
+                <td class="px-6 py-4 text-center font-black text-red-600">${tQ}</td>
+                <td class="px-6 py-4 text-center font-black text-red-600">${tR}</td>
+                <td class="px-6 py-4 text-center font-black bg-blue-100">${tUsable}</td>
+                <td class="px-6 py-4 text-center font-black text-white bg-red-500">${tLoss}</td>`;
+
+            const target = state.demographics.cible_total || 1;
+            document.getElementById('kpi-target').innerText = target.toLocaleString();
+            document.getElementById('kpi-n').innerText = tN.toLocaleString();
+            document.getElementById('kpi-coverage').innerText = ((tN/target)*100).toFixed(2) + '%';
+            document.getElementById('kpi-loss').innerText = tLoss;
+        }
+    </script>
+</body>
+</html>
