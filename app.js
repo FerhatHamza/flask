@@ -1,15 +1,14 @@
 /**
- * FRONTEND LOGIC - APP.JS (Group Mapping Corrected)
+ * FRONTEND LOGIC - APP.JS (Group Rendering Corrected)
  */
 
 // ==========================================
 //  REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL !!!
 // ==========================================
-const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
+const API_BASE = "https://your-worker-name.your-subdomain.workers.dev";
 // ==========================================
 
-// --- LOCATION GROUPING MAP (Corrected for Global Totaux) ---
-// Note: These names must exactly match the 'name' field in your locations table.
+// --- LOCATION GROUPING MAP ---
 const GROUP_MAPPING = {
     'VIEUX KSAR': [
         'Polyclinique vieux k\'sar', 
@@ -183,11 +182,6 @@ document.getElementById('admin-form').addEventListener('submit', async (e) => {
 
 // --- REPORT LOGIC (Includes Corrected Group Totals) ---
 
-/**
- * Calculates sums for a specific group of locations.
- * @param {string[]} locationNames - Array of location names in the group.
- * @returns {object} Totals (N, O, Q, R).
- */
 function calculateGroupTotals(locationNames) {
     let totals = { N: 0, O: 0, Q: 0, R: 0 };
     
@@ -208,9 +202,6 @@ function calculateGroupTotals(locationNames) {
     return totals;
 }
 
-/**
- * Helper to calculate Usable and Loss Rate for a set of totals.
- */
 function calculateKPIs(totals) {
     const usable = totals.O - totals.Q - totals.R;
     const denom = (totals.Q + totals.R) * 50;
@@ -222,17 +213,40 @@ function calculateKPIs(totals) {
     return { usable, loss };
 }
 
+function renderLocationRow(locName, isSubRow = false) {
+    const loc = state.locations.find(l => l.name === locName);
+    if (!loc) return '';
+    
+    const data = state.inventory.find(i => i.location_id === loc.id) || {};
+    const N = data.total_N || 0; const O = data.total_O || 0;
+    const Q = data.total_Q || 0; const R = data.total_R || 0;
+    
+    const { usable, loss } = calculateKPIs({N, O, Q, R});
+
+    return `
+        <tr class="${isSubRow ? 'bg-gray-50 hover:bg-gray-100 border-b' : 'hover:bg-gray-50 border-b'}">
+            <td class="px-6 py-3 font-medium ${isSubRow ? 'pl-10 text-gray-700' : ''}">${loc.name} <span class="text-xs text-gray-400 block">${loc.type}</span></td>
+            <td class="px-6 py-3 text-center font-bold">${N}</td>
+            <td class="px-6 py-3 text-center">${O}</td>
+            <td class="px-6 py-3 text-center text-red-500">${Q}</td>
+            <td class="px-6 py-3 text-center text-red-500">${R}</td>
+            <td class="px-6 py-3 text-center font-bold bg-blue-50">${usable}</td>
+            <td class="px-6 py-3 text-center font-bold bg-yellow-50">${loss}</td>
+        </tr>
+    `;
+}
+
+
 function renderReportTable() {
     const tbody = document.getElementById('report-body');
     const tfooter = document.getElementById('report-footer');
     tbody.innerHTML = '';
     
     let tN=0, tO=0, tQ=0, tR=0;
-    
-    // Track which locations have been rendered (either as part of a group or individually)
     const renderedLocations = []; 
+    let htmlContent = ''; // Use a single variable to build the HTML
 
-    // --- 1. RENDER GROUP TOTALS ---
+    // --- 1. RENDER GROUP TOTALS AND THEIR MEMBERS ---
     for (const groupName in GROUP_MAPPING) {
         const locationNames = GROUP_MAPPING[groupName];
         const groupTotals = calculateGroupTotals(locationNames);
@@ -244,22 +258,26 @@ function renderReportTable() {
         // Add location names to the rendered list
         renderedLocations.push(...locationNames);
 
-        // Render the group row
-        const groupRow = document.createElement('tr');
-        groupRow.className = "bg-blue-50 hover:bg-blue-100 font-bold border-t-2 border-blue-200";
-        groupRow.innerHTML = `
-            <td class="px-6 py-3 font-black text-blue-800">${groupName} (TOTAL)</td>
-            <td class="px-6 py-3 text-center">${groupTotals.N}</td>
-            <td class="px-6 py-3 text-center">${groupTotals.O}</td>
-            <td class="px-6 py-3 text-center text-red-600">${groupTotals.Q}</td>
-            <td class="px-6 py-3 text-center text-red-600">${groupTotals.R}</td>
-            <td class="px-6 py-3 text-center bg-blue-100">${usable}</td>
-            <td class="px-6 py-3 text-center bg-yellow-100">${loss}</td>
+        // 1a. Render the Group Total row
+        htmlContent += `
+            <tr class="bg-blue-200 hover:bg-blue-300 font-black border-t-2 border-b-2 border-blue-400">
+                <td class="px-6 py-3 text-blue-900">${groupName} (TOTAL)</td>
+                <td class="px-6 py-3 text-center">${groupTotals.N}</td>
+                <td class="px-6 py-3 text-center">${groupTotals.O}</td>
+                <td class="px-6 py-3 text-center text-red-700">${groupTotals.Q}</td>
+                <td class="px-6 py-3 text-center text-red-700">${groupTotals.R}</td>
+                <td class="px-6 py-3 text-center bg-blue-300">${usable}</td>
+                <td class="px-6 py-3 text-center bg-yellow-200">${loss}</td>
+            </tr>
         `;
-        tbody.appendChild(groupRow);
+        
+        // 1b. Render the individual locations inside the group
+        locationNames.forEach(locName => {
+            htmlContent += renderLocationRow(locName, true); // true sets isSubRow formatting
+        });
     }
-    
-    // --- 2. RENDER INDIVIDUAL LOCATIONS (Locations not in a custom group) ---
+
+    // --- 2. RENDER INDIVIDUAL LOCATIONS NOT IN A CUSTOM GROUP ---
     state.locations.forEach(loc => {
         // Only render if the location name is NOT in any of the custom groups
         if (renderedLocations.includes(loc.name)) return;
@@ -269,22 +287,13 @@ function renderReportTable() {
         const N = data.total_N || 0; const O = data.total_O || 0;
         const Q = data.total_Q || 0; const R = data.total_R || 0;
         
-        // Add individual totals to the grand totals (if not already counted in groups, which they aren't here)
+        // Add individual totals to the grand totals
         tN += N; tO += O; tQ += Q; tR += R;
 
-        const { usable, loss } = calculateKPIs({N, O, Q, R});
-
-        tbody.innerHTML += `
-            <tr class="hover:bg-gray-50 border-b">
-                <td class="px-6 py-4 font-medium">${loc.name} <span class="text-xs text-gray-400 block">${loc.type}</span></td>
-                <td class="px-6 py-4 text-center font-bold">${N}</td>
-                <td class="px-6 py-4 text-center">${O}</td>
-                <td class="px-6 py-4 text-center text-red-500">${Q}</td>
-                <td class="px-6 py-4 text-center text-red-500">${R}</td>
-                <td class="px-6 py-4 text-center font-bold bg-blue-50">${usable}</td>
-                <td class="px-6 py-4 text-center font-bold bg-yellow-50">${loss}</td>
-            </tr>`;
+        htmlContent += renderLocationRow(loc.name, false);
     });
+
+    tbody.innerHTML = htmlContent;
 
     // --- 3. RENDER GRAND TOTALS ---
     const tUsable = tO - tQ - tR;
@@ -304,7 +313,7 @@ function renderReportTable() {
         </tr>
     `;
 
-    // --- 4. UPDATE KPI CARDS (New Coverage Rates) ---
+    // --- 4. UPDATE KPI CARDS (Coverage Rates) ---
     
     const target2_11m = state.demographics.cible_2_11m || 1;
     const target12_59m = state.demographics.cible_12_59m || 1; 
@@ -313,8 +322,7 @@ function renderReportTable() {
     const taux12_59m = ((tN / target12_59m) * 100).toFixed(2);
     
     const overallTarget = parseInt(target2_11m) + parseInt(target12_59m);
-    const overallTaux = ((tN / overallTarget) * 100).toFixed(2);
-
+    // const overallTaux = ((tN / overallTarget) * 100).toFixed(2); // Removed this since we have the individual targets
 
     document.getElementById('kpi-target').innerText = overallTarget.toLocaleString();
     document.getElementById('kpi-n').innerText = tN.toLocaleString();
