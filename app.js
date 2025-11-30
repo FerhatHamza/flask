@@ -3,12 +3,13 @@
  */
 
 // ==========================================
-//  REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL !!!
+//  *** REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL ***
 // ==========================================
 const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
 // ==========================================
 
 // --- LOCATION GROUPING MAP ---
+// These names must exactly match the 'name' field in your locations table.
 const GROUP_MAPPING = {
     'BAILICHE MAZOUZ': [
         'Polyclinique bailiche mazouz', 
@@ -30,7 +31,7 @@ let state = {
     inventory: []
 };
 
-// --- UTILITY FUNCTIONS ---
+// --- AUTHENTICATION & INITIALIZATION ---
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -98,6 +99,8 @@ async function refreshData() {
     state.inventory = data.inventory || [];
     document.getElementById('nav-epsp-name').innerText = state.demographics.epsp_name || 'EPSP Gestion';
 }
+
+// --- USER & ADMIN LOGIC (Omitted for brevity, assumed correct) ---
 
 function setupUserView() {
     const locId = state.user.location_id;
@@ -211,8 +214,6 @@ function calculateKPIs(totals) {
 
 /**
  * Renders an individual location row.
- * @param {string} locName 
- * @param {boolean} isGroupMember - True if part of a group, changes padding/background.
  */
 function renderLocationRow(locName, isGroupMember) {
     const loc = state.locations.find(l => l.name === locName);
@@ -278,7 +279,7 @@ function renderReportTable() {
         });
     }
 
-    // --- 2. RENDER REMAINING LOCATIONS (if any) ---
+    // --- 2. RENDER REMAINING LOCATIONS (if any, and add their totals to grand total) ---
     state.locations.forEach(loc => {
         // Only render if the location name is NOT in any of the custom groups
         if (renderedLocations.includes(loc.name)) return;
