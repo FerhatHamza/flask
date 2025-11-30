@@ -9,8 +9,6 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
         .hidden { display: none !important; }
-        .loader { border-top-color: #3498db; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
-        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -26,11 +24,11 @@
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase">Utilisateur</label>
-                    <input type="text" id="username" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="ex: user1, admin" required>
+                    <input type="text" id="username" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="" required>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 uppercase">Mot de passe</label>
-                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="••••••" required>
+                    <input type="password" id="password" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 transition" placeholder="" required>
                 </div>
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition duration-200">Se Connecter</button>
             </form>
@@ -104,190 +102,6 @@
         </main>
     </div>
 
-    <script>
-        // ==========================================
-        //  REPLACE THIS WITH YOUR WORKER URL !!!
-        // ==========================================
-        const API_BASE = "https://flask-manager.ferhathamza17.workers.dev/";
-        // ==========================================
-
-        let state = { user: null, demographics: {}, locations: [], inventory: [] };
-
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            const btn = e.target.querySelector('button');
-            const err = document.getElementById('login-error');
-
-            btn.innerText = 'Connexion...'; err.classList.add('hidden');
-
-            try {
-                const res = await fetch(`${API_BASE}/api/login`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ username: u, password: p })
-                });
-
-                if (res.ok) {
-                    state.user = await res.json();
-                    initApp();
-                } else {
-                    err.classList.remove('hidden');
-                    btn.innerText = 'Se Connecter';
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Erreur de connexion au serveur Cloudflare.");
-                btn.innerText = 'Se Connecter';
-            }
-        });
-
-        function logout() { window.location.reload(); }
-
-        async function initApp() {
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById('dashboard-view').classList.remove('hidden');
-            document.getElementById('nav-user-info').innerText = `${state.user.role.toUpperCase()} | ${state.user.username}`;
-            
-            await refreshData();
-
-            if (state.user.role === 'admin') {
-                document.getElementById('section-admin').classList.remove('hidden');
-                document.getElementById('section-report').classList.remove('hidden');
-                populateAdminConfig();
-            } else if (state.user.role === 'consultant') {
-                document.getElementById('section-report').classList.remove('hidden');
-            } else if (state.user.role === 'user') {
-                document.getElementById('section-user').classList.remove('hidden');
-                setupUserView();
-            }
-            if (state.user.role !== 'user') renderReportTable();
-        }
-
-        async function refreshData() {
-            const res = await fetch(`${API_BASE}/api/data`);
-            const data = await res.json();
-            state.demographics = data.demo || {};
-            state.locations = data.locations || [];
-            state.inventory = data.inventory || [];
-            document.getElementById('nav-epsp-name').innerText = state.demographics.epsp_name || 'EPSP Gestion';
-        }
-
-        function setupUserView() {
-            const locId = state.user.location_id;
-            const loc = state.locations.find(l => l.id === locId);
-            document.getElementById('user-location-label').innerText = loc ? loc.name : 'Lieu Inconnu';
-            document.getElementById('inv-date').valueAsDate = new Date();
-
-            ['inv-O', 'inv-Q', 'inv-R'].forEach(id => {
-                document.getElementById(id).addEventListener('input', () => {
-                    const O = parseInt(document.getElementById('inv-O').value) || 0;
-                    const Q = parseInt(document.getElementById('inv-Q').value) || 0;
-                    const R = parseInt(document.getElementById('inv-R').value) || 0;
-                    const usable = O - Q - R;
-                    const physical = usable + Q;
-                    const disp = document.getElementById('disp-usable');
-                    disp.innerText = usable;
-                    disp.className = usable < 0 ? "text-xl font-bold font-mono text-red-500" : "text-xl font-bold font-mono text-green-400";
-                    document.getElementById('disp-physical').innerText = physical;
-                });
-            });
-        }
-
-        document.getElementById('inventory-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if(!confirm("Confirmer les chiffres ?")) return;
-
-            const payload = {
-                location_id: state.user.location_id,
-                date: document.getElementById('inv-date').value,
-                N: parseInt(document.getElementById('inv-N').value),
-                O: parseInt(document.getElementById('inv-O').value),
-                Q: parseInt(document.getElementById('inv-Q').value),
-                R: parseInt(document.getElementById('inv-R').value)
-            };
-
-            await fetch(`${API_BASE}/api/inventory`, { method: 'POST', body: JSON.stringify(payload) });
-            alert("Données enregistrées !");
-            document.getElementById('inventory-form').reset();
-            setupUserView();
-        });
-
-        function populateAdminConfig() {
-            const d = state.demographics;
-            if(!d) return;
-            document.getElementById('cfg-epsp').value = d.epsp_name || '';
-            document.getElementById('cfg-nbr').value = d.nbr_polyclinique || '';
-            document.getElementById('cfg-pop').value = d.pop_total || '';
-            document.getElementById('cfg-c2').value = d.cible_2_11m || '';
-            document.getElementById('cfg-c12').value = d.cible_12_59m || '';
-        }
-
-        document.getElementById('admin-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const payload = {
-                epsp_name: document.getElementById('cfg-epsp').value,
-                nbr_polyclinique: document.getElementById('cfg-nbr').value,
-                pop_total: document.getElementById('cfg-pop').value,
-                cible_2_11m: document.getElementById('cfg-c2').value,
-                cible_12_59m: document.getElementById('cfg-c12').value,
-            };
-            await fetch(`${API_BASE}/api/demographics`, { method: 'POST', body: JSON.stringify(payload) });
-            alert("Configuration sauvegardée.");
-            await refreshData();
-            renderReportTable();
-        });
-
-        function renderReportTable() {
-            const tbody = document.getElementById('report-body');
-            const tfooter = document.getElementById('report-footer');
-            tbody.innerHTML = '';
-            let tN=0, tO=0, tQ=0, tR=0;
-
-            state.locations.forEach(loc => {
-                const data = state.inventory.find(i => i.location_id === loc.id) || {};
-                const N = data.total_N || 0; const O = data.total_O || 0;
-                const Q = data.total_Q || 0; const R = data.total_R || 0;
-                tN += N; tO += O; tQ += Q; tR += R;
-
-                const usable = O - Q - R;
-                const denom = (Q + R) * 50;
-                let loss = "-";
-                if (denom > 0) loss = (((denom - N) / denom) * 100).toFixed(2) + '%';
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50 border-b">
-                        <td class="px-6 py-4 font-medium">${loc.name} <span class="text-xs text-gray-400 block">${loc.type}</span></td>
-                        <td class="px-6 py-4 text-center font-bold">${N}</td>
-                        <td class="px-6 py-4 text-center">${O}</td>
-                        <td class="px-6 py-4 text-center text-red-500">${Q}</td>
-                        <td class="px-6 py-4 text-center text-red-500">${R}</td>
-                        <td class="px-6 py-4 text-center font-bold bg-blue-50">${usable}</td>
-                        <td class="px-6 py-4 text-center font-bold bg-yellow-50">${loss}</td>
-                    </tr>`;
-            });
-
-            const tUsable = tO - tQ - tR;
-            const tDenom = (tQ + tR) * 50;
-            let tLoss = "0.00%";
-            if (tDenom > 0) tLoss = (((tDenom - tN) / tDenom) * 100).toFixed(2) + '%';
-
-            tfooter.innerHTML = `
-                <td class="px-6 py-4 font-black">TOTAL GLOBAL</td>
-                <td class="px-6 py-4 text-center font-black">${tN}</td>
-                <td class="px-6 py-4 text-center font-black">${tO}</td>
-                <td class="px-6 py-4 text-center font-black text-red-600">${tQ}</td>
-                <td class="px-6 py-4 text-center font-black text-red-600">${tR}</td>
-                <td class="px-6 py-4 text-center font-black bg-blue-100">${tUsable}</td>
-                <td class="px-6 py-4 text-center font-black text-white bg-red-500">${tLoss}</td>`;
-
-            const target = state.demographics.cible_total || 1;
-            document.getElementById('kpi-target').innerText = target.toLocaleString();
-            document.getElementById('kpi-n').innerText = tN.toLocaleString();
-            document.getElementById('kpi-coverage').innerText = ((tN/target)*100).toFixed(2) + '%';
-            document.getElementById('kpi-loss').innerText = tLoss;
-        }
-    </script>
+    <script src="app.js"></script> 
 </body>
 </html>
