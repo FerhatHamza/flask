@@ -1,13 +1,27 @@
 /**
- * FRONTEND LOGIC - APP.JS
- * Place this in your GitHub repository
+ * FRONTEND LOGIC - APP.JS (Updated)
  */
 
 // ==========================================
 //  REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL !!!
 // ==========================================
-const API_BASE = "https://flask-manager.ferhathamza17.workers.dev";
+const API_BASE = "https://your-worker-name.your-subdomain.workers.dev";
 // ==========================================
+
+// --- LOCATION GROUPING MAP (For Global Totaux) ---
+// Note: These names must exactly match the 'name' field in your locations table.
+const GROUP_MAPPING = {
+    'VIEUX KSAR': [
+        'Polyclinique vieux k\'sar', 
+        'equip mobile 2', 
+        'center de sante chikh ameur'
+    ],
+    'BAILICHE MAZOUZ': [
+        'Polyclinique bailiche mazouz', 
+        'equip mobile 1', 
+        'center de sante elmoudjahidine'
+    ]
+};
 
 // --- GLOBAL STATE ---
 let state = {
@@ -39,12 +53,10 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             state.user = await res.json();
             initApp();
         } else {
-            // Handle HTTP errors (401, 500, etc.)
             err.classList.remove('hidden');
             btn.innerText = 'Se Connecter';
         }
     } catch (error) {
-        // Handle network errors (Failed to fetch, ERR_CONNECTION_CLOSED)
         console.error("Fetch Error:", error);
         err.innerText = "Erreur de connexion : Vérifiez l'URL de l'API et la configuration CORS.";
         err.classList.remove('hidden');
@@ -169,26 +181,94 @@ document.getElementById('admin-form').addEventListener('submit', async (e) => {
     renderReportTable();
 });
 
-// --- REPORT LOGIC ---
+
+// --- REPORT LOGIC (Includes Group Totals) ---
+
+/**
+ * Calculates sums for a specific group of locations.
+ * @param {string[]} locationNames - Array of location names in the group.
+ * @returns {object} Totals (N, O, Q, R).
+ */
+function calculateGroupTotals(locationNames) {
+    let totals = { N: 0, O: 0, Q: 0, R: 0 };
+    
+    // 1. Find the location IDs corresponding to the names
+    const locationIds = state.locations
+        .filter(loc => locationNames.includes(loc.name))
+        .map(loc => loc.id);
+
+    // 2. Sum the inventory data for those IDs
+    state.inventory.forEach(inv => {
+        if (locationIds.includes(inv.location_id)) {
+            totals.N += inv.total_N || 0;
+            totals.O += inv.total_O || 0;
+            totals.Q += inv.total_Q || 0;
+            totals.R += inv.total_R || 0;
+        }
+    });
+    return totals;
+}
+
+/**
+ * Helper to calculate Usable and Loss Rate for a set of totals.
+ */
+function calculateKPIs(totals) {
+    const usable = totals.O - totals.Q - totals.R;
+    const denom = (totals.Q + totals.R) * 50;
+    let loss = "0.00%";
+    if (denom > 0) {
+        const rawRate = (denom - totals.N) / denom;
+        loss = (rawRate * 100).toFixed(2) + '%';
+    }
+    return { usable, loss };
+}
+
 function renderReportTable() {
     const tbody = document.getElementById('report-body');
     const tfooter = document.getElementById('report-footer');
     tbody.innerHTML = '';
+    
     let tN=0, tO=0, tQ=0, tR=0;
+    
+    // --- 1. RENDER GROUP TOTALS ---
+    for (const groupName in GROUP_MAPPING) {
+        const locationNames = GROUP_MAPPING[groupName];
+        const groupTotals = calculateGroupTotals(locationNames);
+        const { usable, loss } = calculateKPIs(groupTotals);
 
+        // Add group totals to the grand totals
+        tN += groupTotals.N; tO += groupTotals.O; tQ += groupTotals.Q; tR += groupTotals.R;
+
+        // Render the group row
+        const groupRow = document.createElement('tr');
+        groupRow.className = "bg-blue-50 hover:bg-blue-100 font-bold border-t-2 border-blue-200";
+        groupRow.innerHTML = `
+            <td class="px-6 py-3 font-black text-blue-800">${groupName} (TOTAL)</td>
+            <td class="px-6 py-3 text-center">${groupTotals.N}</td>
+            <td class="px-6 py-3 text-center">${groupTotals.O}</td>
+            <td class="px-6 py-3 text-center text-red-600">${groupTotals.Q}</td>
+            <td class="px-6 py-3 text-center text-red-600">${groupTotals.R}</td>
+            <td class="px-6 py-3 text-center bg-blue-100">${usable}</td>
+            <td class="px-6 py-3 text-center bg-yellow-100">${loss}</td>
+        `;
+        tbody.appendChild(groupRow);
+    }
+    
+    // --- 2. RENDER INDIVIDUAL LOCATIONS (Non-grouped locations are also included) ---
     state.locations.forEach(loc => {
+        // Find if this location is part of a mapped group. If so, skip rendering it individually.
+        const isGrouped = Object.values(GROUP_MAPPING).flat().includes(loc.name);
+        if (isGrouped) return;
+
         const data = state.inventory.find(i => i.location_id === loc.id) || {};
         const N = data.total_N || 0; const O = data.total_O || 0;
         const Q = data.total_Q || 0; const R = data.total_R || 0;
+        
+        // Only add non-grouped totals if you want a true GRAND TOTAL 
+        // that includes locations not in the two specified groups.
         tN += N; tO += O; tQ += Q; tR += R;
 
-        const usable = O - Q - R;
-        const denom = (Q + R) * 50;
-        let loss = "-";
-        if (denom > 0) {
-            const rawRate = (denom - N) / denom;
-            loss = (rawRate * 100).toFixed(2) + '%';
-        }
+        const { usable, loss } = calculateKPIs({N, O, Q, R});
 
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 border-b">
@@ -202,23 +282,44 @@ function renderReportTable() {
             </tr>`;
     });
 
+    // --- 3. RENDER GRAND TOTALS ---
     const tUsable = tO - tQ - tR;
     const tDenom = (tQ + tR) * 50;
     let tLoss = "0.00%";
     if (tDenom > 0) tLoss = (((tDenom - tN) / tDenom) * 100).toFixed(2) + '%';
 
     tfooter.innerHTML = `
-        <td class="px-6 py-4 font-black">TOTAL GLOBAL</td>
-        <td class="px-6 py-4 text-center font-black">${tN}</td>
-        <td class="px-6 py-4 text-center font-black">${tO}</td>
-        <td class="px-6 py-4 text-center font-black text-red-600">${tQ}</td>
-        <td class="px-6 py-4 text-center font-black text-red-600">${tR}</td>
-        <td class="px-6 py-4 text-center font-black bg-blue-100">${tUsable}</td>
-        <td class="px-6 py-4 text-center font-black text-white bg-red-500">${tLoss}</td>`;
+        <tr>
+            <td class="px-6 py-4 font-black text-white bg-slate-700">GRAND TOTAL GLOBAL</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tN}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tO}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tQ}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-slate-700">${tR}</td>
+            <td class="px-6 py-4 text-center font-black text-blue-800 bg-blue-300">${tUsable}</td>
+            <td class="px-6 py-4 text-center font-black text-white bg-red-600">${tLoss}</td>
+        </tr>
+    `;
 
-    const target = state.demographics.cible_total || 1;
-    document.getElementById('kpi-target').innerText = target.toLocaleString();
+    // --- 4. UPDATE KPI CARDS (New Coverage Rates) ---
+    
+    // Note: Since 'N' is the total number vaccinated (not split by age group),
+    // we use the total N against each specific age target for the Taux Cible.
+    const target2_11m = state.demographics.cible_2_11m || 1;
+    const target12_59m = state.demographics.cible_12_59m || 1; 
+
+    // Calculate Taux Cible (Coverage Rate)
+    const taux2_11m = ((tN / target2_11m) * 100).toFixed(2);
+    const taux12_59m = ((tN / target12_59m) * 100).toFixed(2);
+    
+    // Calculate Overall Coverage
+    const overallTarget = target2_11m + target12_59m;
+    const overallTaux = ((tN / overallTarget) * 100).toFixed(2);
+
+
+    document.getElementById('kpi-target').innerText = overallTarget.toLocaleString();
     document.getElementById('kpi-n').innerText = tN.toLocaleString();
-    document.getElementById('kpi-coverage').innerText = ((tN/target)*100).toFixed(2) + '%';
+    document.getElementById('kpi-taux-2-11m').innerText = taux2_11m + '%';
+    document.getElementById('kpi-taux-12-59m').innerText = taux12_59m + '%';
+    document.getElementById('kpi-overall-coverage').innerText = overallTaux + '%'; // New overall KPI
     document.getElementById('kpi-loss').innerText = tLoss;
 }
