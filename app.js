@@ -321,10 +321,9 @@ function renderReportTable() {
     
     const target2_11m = state.demographics.cible_2_11m || 1;
     const target12_59m = state.demographics.cible_12_59m || 1; 
-    const totalvac = target2_11m + target12_59m ;
-    const taux2_11m = ((tN / totalvac) * 100).toFixed(2);
+    const cible_totaltN = state.demographics.cible_total || 1; 
+    const taux2_11m = ((cible_totaltN / tN) * 100).toFixed(2);
     //const taux2_11m = ((tN / target2_11m) * 100).toFixed(2);
-    const taux2_11m = ((tN / target2_11m) * 100).toFixed(2);
     const taux12_59m = ((tN / target12_59m) * 100).toFixed(2);
     
     const overallTarget = parseInt(target2_11m) + parseInt(target12_59m);
