@@ -333,4 +333,35 @@ function renderReportTable() {
     document.getElementById('kpi-taux-2-11m').innerText = taux2_11m + '%';
     document.getElementById('kpi-taux-12-59m').innerText = taux12_59m + '%';
     document.getElementById('kpi-loss').innerText = tLoss;
+
+    function printDashboard() {
+        const mainContent = document.querySelector('main').outerHTML;
+        const navBar = document.querySelector('nav').outerHTML; // Optional: include the top nav
+    
+        const printWindow = window.open('', '', 'height=800,width=1200');
+        printWindow.document.write('<html><head><title>Rapport Global EPSP</title>');
+        
+        // Include tailwind CSS for styling
+        printWindow.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+        
+        // Custom print CSS to hide unnecessary elements and maximize content area
+        printWindow.document.write('<style>@media print {');
+        // Hide buttons/forms that shouldn't appear in the static printout
+        printWindow.document.write('#login-view, #admin-form button, #inventory-form button, #report-filter-form { display: none !important; }');
+        // Ensure the main content uses full width
+        printWindow.document.write('.container { max-width: 100% !important; margin: 0; }');
+        // Force all sections to be visible on print if they are not explicitly hidden by JS
+        printWindow.document.write('#section-admin, #section-user, #section-report { display: block !important; }');
+        printWindow.document.write('}</style>');
+        
+        printWindow.document.write('</head><body>');
+        printWindow.document.write(navBar); 
+        printWindow.document.write(mainContent);
+        printWindow.document.write('</body></html>');
+        
+        printWindow.document.close();
+        printWindow.onload = function() {
+        printWindow.print();
+    };
+}
 }
